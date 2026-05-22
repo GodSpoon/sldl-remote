@@ -10,10 +10,8 @@
 
 use tauri::State;
 
-
 use crate::models::{
-    AlbumDiscoveryResult, AlbumInfo, Job, JobStatus, JobType,
-    StartAlbumModeRequest,
+    AlbumDiscoveryResult, AlbumInfo, Job, JobStatus, JobType, StartAlbumModeRequest,
 };
 use crate::services::AppServices;
 
@@ -25,8 +23,8 @@ use crate::services::AppServices;
 pub async fn discover_albums_from_playlist(
     playlist_url: String,
 ) -> Result<AlbumDiscoveryResult, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     // Write a temp config for the discovery run
@@ -49,7 +47,7 @@ pub async fn discover_albums_from_playlist(
         .map_err(|e| e.to_string())?;
 
     // Parse output for artist/album pairs
-    let albums: std::collections::HashSet<( String, String )> = std::collections::HashSet::new();
+    let albums: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
     let mut tracks = vec![];
 
     for line in out.lines() {
@@ -138,12 +136,9 @@ echo $!",
                 log_path,
             );
 
-            let pid_out = crate::services::ssh::run(
-                &config.ssh_target(),
-                &sldl_cmd,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+            let pid_out = crate::services::ssh::run(&config.ssh_target(), &sldl_cmd)
+                .await
+                .map_err(|e| e.to_string())?;
             let pid = pid_out.trim().parse::<u32>().ok();
 
             let job = Job {
@@ -164,11 +159,7 @@ echo $!",
                 ..Default::default()
             };
 
-            state
-                .jobs
-                .lock()
-                .map_err(|e| e.to_string())?
-                .insert(job);
+            state.jobs.lock().map_err(|e| e.to_string())?.insert(job);
 
             // Link to parent
             let _ = state
@@ -200,10 +191,7 @@ fn sanitize_dir(name: &str) -> String {
 
 /// Get the parent job and all its children (for Associated Album Mode view).
 #[tauri::command]
-pub fn get_job_family(
-    state: State<'_, AppServices>,
-    job_id: String,
-) -> Result<Vec<Job>, String> {
+pub fn get_job_family(state: State<'_, AppServices>, job_id: String) -> Result<Vec<Job>, String> {
     let mgr = state.jobs.lock().map_err(|e| e.to_string())?;
     let parent = mgr
         .get(&job_id)
@@ -223,9 +211,7 @@ pub fn estimate_family_completion(
     job_id: String,
 ) -> Result<String, String> {
     let mgr = state.jobs.lock().map_err(|e| e.to_string())?;
-    let (downloaded, _failed, total) = mgr
-        .aggregate_progress(&job_id)
-        .unwrap_or((0, 0, 0));
+    let (downloaded, _failed, total) = mgr.aggregate_progress(&job_id).unwrap_or((0, 0, 0));
 
     if total == 0 || downloaded == 0 {
         return Ok("Estimating...".into());

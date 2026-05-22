@@ -1,11 +1,7 @@
+pub mod album_mode;
 pub mod config;
 pub mod jobs;
 pub mod library;
-pub mod album_mode;
-
-
-
-
 
 /// Helper: convert AppResult to Tauri Result<T, String>.
 pub fn ok<T>(r: crate::error::AppResult<T>) -> Result<T, String> {
@@ -88,8 +84,8 @@ pub fn parse_spotify_url(url: String) -> Result<serde_json::Value, String> {
 /// Validate a job before starting it (URL format, disk space, etc.).
 #[tauri::command]
 pub async fn validate_job(url: String) -> Result<crate::models::JobValidation, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
 
     let job_type = crate::models::JobType::detect(&url);
     let spotify_id = crate::services::extract_spotify_id(&url);
@@ -101,11 +97,10 @@ pub async fn validate_job(url: String) -> Result<crate::models::JobValidation, S
     }
 
     // Check disk space
-    let (_total, free) = crate::services::check_disk_space(&config.ssh_target(),
-        &config.output_path,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    let (_total, free) =
+        crate::services::check_disk_space(&config.ssh_target(), &config.output_path)
+            .await
+            .map_err(|e| e.to_string())?;
 
     if free < 5.0 {
         warnings.push(format!(
@@ -167,22 +162,34 @@ pub fn apply_profile(
 ) -> crate::models::AppConfig {
     if let Some(obj) = profile.config_patch.as_object() {
         if let Some(v) = obj.get("searches_per_time") {
-            if let Some(n) = v.as_u64() { config.searches_per_time = n as u32; }
+            if let Some(n) = v.as_u64() {
+                config.searches_per_time = n as u32;
+            }
         }
         if let Some(v) = obj.get("searches_renew_time") {
-            if let Some(n) = v.as_u64() { config.searches_renew_time = n as u32; }
+            if let Some(n) = v.as_u64() {
+                config.searches_renew_time = n as u32;
+            }
         }
         if let Some(v) = obj.get("fast_search") {
-            if let Some(b) = v.as_bool() { config.fast_search = b; }
+            if let Some(b) = v.as_bool() {
+                config.fast_search = b;
+            }
         }
         if let Some(v) = obj.get("pref_format") {
-            if let Some(s) = v.as_str() { config.pref_format = s.into(); }
+            if let Some(s) = v.as_str() {
+                config.pref_format = s.into();
+            }
         }
         if let Some(v) = obj.get("pref_min_bitrate") {
-            if let Some(n) = v.as_u64() { config.pref_min_bitrate = n as u32; }
+            if let Some(n) = v.as_u64() {
+                config.pref_min_bitrate = n as u32;
+            }
         }
         if let Some(v) = obj.get("pref_max_bitrate") {
-            if let Some(n) = v.as_u64() { config.pref_max_bitrate = n as u32; }
+            if let Some(n) = v.as_u64() {
+                config.pref_max_bitrate = n as u32;
+            }
         }
     }
     config
@@ -191,8 +198,8 @@ pub fn apply_profile(
 /// Get the full remote host info (caches on first call).
 #[tauri::command]
 pub async fn get_remote_host_info() -> Result<crate::models::RemoteHostInfo, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     crate::services::ssh::get_system_info(&config)
         .await
         .map_err(|e| e.to_string())
@@ -201,27 +208,20 @@ pub async fn get_remote_host_info() -> Result<crate::models::RemoteHostInfo, Str
 /// Run a full health check on the remote environment.
 #[tauri::command]
 pub async fn health_check() -> Result<crate::models::HealthCheck, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let mut errors = vec![];
 
-    let ssh_ok = crate::services::ssh::run(
-        &config.ssh_target(),
-        "echo ok"
-    )
-    .await
-    .is_ok();
+    let ssh_ok = crate::services::ssh::run(&config.ssh_target(), "echo ok")
+        .await
+        .is_ok();
 
     if !ssh_ok {
         errors.push("SSH connection failed".into());
     }
 
     let sldl_version = if ssh_ok {
-        match crate::services::verify_sldl_binary(&config.ssh_target(),
-            &config.sldl_path,
-        )
-        .await
-        {
+        match crate::services::verify_sldl_binary(&config.ssh_target(), &config.sldl_path).await {
             Ok(v) => {
                 if v.is_empty() || v == "unknown" {
                     errors.push(format!("sldl not found at {}", config.sldl_path));
@@ -240,12 +240,7 @@ pub async fn health_check() -> Result<crate::models::HealthCheck, String> {
     };
 
     let disk_ok = if ssh_ok {
-        match crate::services::check_disk_space(
-            &config.ssh_target(),
-            &config.output_path,
-        )
-        .await
-        {
+        match crate::services::check_disk_space(&config.ssh_target(), &config.output_path).await {
             Ok((_, free)) => {
                 if free < 1.0 {
                     errors.push(format!(
@@ -278,9 +273,7 @@ pub async fn health_check() -> Result<crate::models::HealthCheck, String> {
         )
         .await
         {
-            Ok(out) => {
-                out.contains("Loading Spotify") || out.contains("Downloading")
-            }
+            Ok(out) => out.contains("Loading Spotify") || out.contains("Downloading"),
             Err(_) => false,
         }
     } else {
@@ -298,9 +291,7 @@ pub async fn health_check() -> Result<crate::models::HealthCheck, String> {
         )
         .await
         {
-            Ok(out) => {
-                !out.contains("Login failed") && !out.contains("banned")
-            }
+            Ok(out) => !out.contains("Login failed") && !out.contains("banned"),
             Err(_) => false,
         }
     } else {

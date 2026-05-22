@@ -61,7 +61,11 @@ impl<T> Paginated<T> {
     pub fn new(items: Vec<T>, page: usize, per_page: usize) -> Self {
         let total = items.len();
         Self {
-            items: items.into_iter().skip(page * per_page).take(per_page).collect(),
+            items: items
+                .into_iter()
+                .skip(page * per_page)
+                .take(per_page)
+                .collect(),
             total,
             page,
             per_page,
@@ -252,14 +256,37 @@ impl ConfigProfile {
 /// Event emitted to frontend via Tauri channels.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BackendEvent {
-    JobStarted { job_id: String, job_type: String },
-    JobProgress { job_id: String, progress: String, percent: Option<f64> },
-    JobCompleted { job_id: String, stats: JobStats },
-    JobFailed { job_id: String, error: String },
-    LogLine { job_id: String, line: String },
-    ConnectionLost { host: String },
-    ConnectionRestored { host: String },
-    BanDetected { ip: Option<String>, retry_after_sec: u64 },
+    JobStarted {
+        job_id: String,
+        job_type: String,
+    },
+    JobProgress {
+        job_id: String,
+        progress: String,
+        percent: Option<f64>,
+    },
+    JobCompleted {
+        job_id: String,
+        stats: JobStats,
+    },
+    JobFailed {
+        job_id: String,
+        error: String,
+    },
+    LogLine {
+        job_id: String,
+        line: String,
+    },
+    ConnectionLost {
+        host: String,
+    },
+    ConnectionRestored {
+        host: String,
+    },
+    BanDetected {
+        ip: Option<String>,
+        retry_after_sec: u64,
+    },
     Notification(Notification),
 }
 

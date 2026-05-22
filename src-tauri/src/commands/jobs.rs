@@ -1,13 +1,10 @@
-
-
 use chrono::Local;
 use tauri::State;
 use uuid::Uuid;
 
-
 use crate::models::{
-    AckJobRequest, BatchJobRequest, BatchOperation, Job, JobFilter, JobSort, JobStatus,
-    JobType, Paginated, StartJobRequest, StartJobResponse,
+    AckJobRequest, BatchJobRequest, BatchOperation, Job, JobFilter, JobSort, JobStatus, JobType,
+    Paginated, StartJobRequest, StartJobResponse,
 };
 use crate::services::AppServices;
 
@@ -34,8 +31,7 @@ pub async fn start_job(
     };
 
     let id = Uuid::new_v4().to_string();
-    let sid = crate::services::extract_spotify_id(&req.url)
-        .unwrap_or_else(|| "unknown".into());
+    let sid = crate::services::extract_spotify_id(&req.url).unwrap_or_else(|| "unknown".into());
 
     let subdir = req.output_subdir.unwrap_or_else(|| match job_type {
         JobType::Playlist => format!("playlists/{}", sid),
@@ -48,9 +44,9 @@ pub async fn start_job(
 
     let log_path = format!("/tmp/sldl-remote-{}.log", id);
     let remote_conf = format!("/tmp/sldl-remote-{}.conf", id);
-    let listen_port = req.listen_port.unwrap_or_else(|| {
-        crate::services::allocate_listen_port(config.listen_port_base)
-    });
+    let listen_port = req
+        .listen_port
+        .unwrap_or_else(|| crate::services::allocate_listen_port(config.listen_port_base));
 
     // Write per-job config to remote host
     let ini = config.to_sldl_ini(&output_dir);
@@ -150,13 +146,11 @@ pub fn list_jobs(
     match sort_fn {
         JobSort::CreatedAt => jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at)),
         JobSort::UpdatedAt => jobs.sort_by(|a, b| b.updated_at.cmp(&a.updated_at)),
-        JobSort::Progress => {
-            jobs.sort_by(|a, b| {
-                let pa = a.percent_complete.unwrap_or(0.0);
-                let pb = b.percent_complete.unwrap_or(0.0);
-                pb.partial_cmp(&pa).unwrap_or(std::cmp::Ordering::Equal)
-            })
-        }
+        JobSort::Progress => jobs.sort_by(|a, b| {
+            let pa = a.percent_complete.unwrap_or(0.0);
+            let pb = b.percent_complete.unwrap_or(0.0);
+            pb.partial_cmp(&pa).unwrap_or(std::cmp::Ordering::Equal)
+        }),
         JobSort::Status => {
             jobs.sort_by(|a, b| format!("{:?}", a.status).cmp(&format!("{:?}", b.status)))
         }
@@ -282,10 +276,7 @@ pub async fn get_job_logs(
 }
 
 #[tauri::command]
-pub async fn stop_job(
-    state: State<'_, AppServices>,
-    job_id: String,
-) -> Result<(), String> {
+pub async fn stop_job(state: State<'_, AppServices>, job_id: String) -> Result<(), String> {
     let config = {
         let mut mgr = state.config.lock().map_err(|e| e.to_string())?;
         mgr.load().map_err(|e| e.to_string())?
@@ -341,7 +332,11 @@ pub async fn restart_job(
     let _ = crate::services::ssh::delete_remote_file(&config, &old_job.remote_conf_path).await;
 
     // Remove old job from registry
-    state.jobs.lock().map_err(|e| e.to_string())?.remove(&job_id);
+    state
+        .jobs
+        .lock()
+        .map_err(|e| e.to_string())?
+        .remove(&job_id);
 
     // Start fresh
     start_job(
@@ -355,7 +350,8 @@ pub async fn restart_job(
                     .output_dir
                     .strip_prefix(&format!("{}/", config.output_path))
                     .unwrap_or(&old_job.output_dir)
-                    .to_string()),
+                    .to_string(),
+            ),
             listen_port: None,
             enqueue_only: false,
         },
@@ -385,11 +381,7 @@ pub fn clear_completed(state: State<'_, AppServices>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn ack_job(
-    state: State<'_, AppServices>,
-    _req: AckJobRequest,
-) -> Result<(), String> {
-
+pub fn ack_job(state: State<'_, AppServices>, _req: AckJobRequest) -> Result<(), String> {
     let mgr = state.jobs.lock().map_err(|e| e.to_string())?;
     let jobs = mgr.list();
     // Since get_mut returns the whole map guard, we need to use the raw HashMap
@@ -409,7 +401,13 @@ pub fn batch_jobs(
     match req.operation {
         BatchOperation::Delete => {
             for id in req.job_ids {
-                if state.jobs.lock().map_err(|e| e.to_string())?.remove(&id).is_some() {
+                if state
+                    .jobs
+                    .lock()
+                    .map_err(|e| e.to_string())?
+                    .remove(&id)
+                    .is_some()
+                {
                     results.push(format!("Deleted {}", id));
                 } else {
                     results.push(format!("Not found: {}", id));
@@ -429,11 +427,26 @@ pub fn get_job_stats(state: State<'_, AppServices>) -> Result<serde_json::Value,
     let jobs = mgr.list();
 
     let total = jobs.len();
-    let running = jobs.iter().filter(|j| j.status == JobStatus::Running).count();
-    let completed = jobs.iter().filter(|j| j.status == JobStatus::Completed).count();
-    let failed = jobs.iter().filter(|j| j.status == JobStatus::Failed).count();
-    let stopped = jobs.iter().filter(|j| j.status == JobStatus::Stopped).count();
-    let banned = jobs.iter().filter(|j| j.status == JobStatus::Banned).count();
+    let running = jobs
+        .iter()
+        .filter(|j| j.status == JobStatus::Running)
+        .count();
+    let completed = jobs
+        .iter()
+        .filter(|j| j.status == JobStatus::Completed)
+        .count();
+    let failed = jobs
+        .iter()
+        .filter(|j| j.status == JobStatus::Failed)
+        .count();
+    let stopped = jobs
+        .iter()
+        .filter(|j| j.status == JobStatus::Stopped)
+        .count();
+    let banned = jobs
+        .iter()
+        .filter(|j| j.status == JobStatus::Banned)
+        .count();
 
     let total_downloaded: usize = jobs.iter().map(|j| j.downloaded_count).sum();
     let total_failed: usize = jobs.iter().map(|j| j.failed_count).sum();

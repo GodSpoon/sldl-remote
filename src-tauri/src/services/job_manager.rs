@@ -64,7 +64,10 @@ impl JobManager {
                     .map(|q| {
                         j.url.to_lowercase().contains(&q.to_lowercase())
                             || j.id.to_lowercase().contains(&q.to_lowercase())
-                            || j.job_type.label().to_lowercase().contains(&q.to_lowercase())
+                            || j.job_type
+                                .label()
+                                .to_lowercase()
+                                .contains(&q.to_lowercase())
                     })
                     .unwrap_or(true);
                 status_ok && search_ok
@@ -127,16 +130,14 @@ impl JobManager {
         if let Some(ref action) = parsed.current_action {
             job.progress = format!(
                 "{}: {}/{} ({} failed)",
-                action,
-                parsed.downloaded,
-                parsed.total,
-                parsed.failed
+                action, parsed.downloaded, parsed.total, parsed.failed
             );
         }
         job.updated_at = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
         // Auto-detect completion
-        if parsed.total > 0 && parsed.downloaded + parsed.failed + parsed.not_found >= parsed.total {
+        if parsed.total > 0 && parsed.downloaded + parsed.failed + parsed.not_found >= parsed.total
+        {
             if parsed.failed == 0 && parsed.not_found == 0 {
                 job.status = JobStatus::Completed;
             } else {

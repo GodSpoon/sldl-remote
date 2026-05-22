@@ -54,10 +54,7 @@ pub fn build_output_subdir(base: &str, job_type: &crate::models::JobType, url: &
 }
 
 /// Helper: build the remote sldl command string.
-pub fn build_sldl_command(
-    config: &crate::models::AppConfig,
-    job: &crate::models::Job,
-) -> String {
+pub fn build_sldl_command(config: &crate::models::AppConfig, job: &crate::models::Job) -> String {
     let flag = job.job_type.sldl_flag();
     let url_escaped = shell_escape::escape(job.url.clone().into());
 
@@ -65,11 +62,7 @@ pub fn build_sldl_command(
         format!(
             "nohup '{}' {} --config '{}' --listen-port {} > '{}' 2>&1 &
 echo $!",
-            config.sldl_path,
-            url_escaped,
-            job.remote_conf_path,
-            job.listen_port,
-            job.log_path,
+            config.sldl_path, url_escaped, job.remote_conf_path, job.listen_port, job.log_path,
         )
     } else {
         format!(
@@ -153,9 +146,7 @@ pub fn detect_ban(stderr: &str) -> Option<(String, u64)> {
         };
         return Some((msg.into(), 1800));
     }
-    if lower.contains("the underlying tcp connection is closed")
-        && lower.contains("timeout")
-    {
+    if lower.contains("the underlying tcp connection is closed") && lower.contains("timeout") {
         return Some(("Possible Soulseek ban (connection closed)".into(), 1800));
     }
     None
@@ -168,8 +159,15 @@ pub async fn verify_sldl_binary(host: &str, path: &str) -> Result<String, crate:
 }
 
 /// Check disk space on the remote output directory.
-pub async fn check_disk_space(host: &str, path: &str) -> Result<(f64, f64), crate::error::AppError> {
-    let out = ssh::run(host, &format!("df -BG '{}' | tail -1 | awk '{{print $2,$4}}'", path)).await?;
+pub async fn check_disk_space(
+    host: &str,
+    path: &str,
+) -> Result<(f64, f64), crate::error::AppError> {
+    let out = ssh::run(
+        host,
+        &format!("df -BG '{}' | tail -1 | awk '{{print $2,$4}}'", path),
+    )
+    .await?;
     let parts: Vec<&str> = out.trim().split_whitespace().collect();
     if parts.len() >= 2 {
         let total = parts[0].trim_end_matches('G').parse::<f64>().unwrap_or(0.0);

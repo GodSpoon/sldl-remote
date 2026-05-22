@@ -1,4 +1,3 @@
-
 use crate::models::{LibraryFile, LibraryStats, Paginated};
 
 /// List files in the remote music library.
@@ -9,8 +8,8 @@ pub async fn list_downloads(
     page: Option<usize>,
     per_page: Option<usize>,
 ) -> Result<Paginated<LibraryFile>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let base_path = if let Some(sub) = subdir {
@@ -19,7 +18,9 @@ pub async fn list_downloads(
         config.output_path.clone()
     };
 
-    let search_filter = search.map(|s| format!(" | grep -i '{}'", s)).unwrap_or_default();
+    let search_filter = search
+        .map(|s| format!(" | grep -i '{}'", s))
+        .unwrap_or_default();
     let cmd = format!(
         "find '{}' -maxdepth 4 -type f {} | sort",
         base_path, search_filter
@@ -54,8 +55,8 @@ pub async fn list_downloads(
 /// Get library statistics (file counts, sizes, by category).
 #[tauri::command]
 pub async fn get_download_stats() -> Result<LibraryStats, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let mut by_category = vec![];
@@ -133,8 +134,8 @@ pub async fn get_download_stats() -> Result<LibraryStats, String> {
 /// Get details for a specific file.
 #[tauri::command]
 pub async fn get_file_info(remote_path: String) -> Result<LibraryFile, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let cmd = format!(
@@ -168,8 +169,8 @@ pub async fn get_file_info(remote_path: String) -> Result<LibraryFile, String> {
 /// Delete a file from the remote library.
 #[tauri::command]
 pub async fn delete_file(remote_path: String) -> Result<(), String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     crate::services::ssh::run(&host, &format!("rm -f '{}'", remote_path))
@@ -183,7 +184,10 @@ pub async fn delete_file(remote_path: String) -> Result<(), String> {
 /// Returns the command that would be run (since we can't open remote GUI).
 #[tauri::command]
 pub async fn reveal_file(remote_path: String) -> Result<String, String> {
-    Ok(format!("On the remote host: xdg-open '{}' || open '{}'", remote_path, remote_path))
+    Ok(format!(
+        "On the remote host: xdg-open '{}' || open '{}'",
+        remote_path, remote_path
+    ))
 }
 
 /// Play a file via remote mpv/vlc (returns the command).
@@ -198,8 +202,8 @@ pub async fn play_file(remote_path: String) -> Result<String, String> {
 /// Get recently added files (last N hours).
 #[tauri::command]
 pub async fn get_recent_files(hours: u64) -> Result<Vec<LibraryFile>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let cmd = format!(
@@ -234,8 +238,8 @@ pub async fn get_recent_files(hours: u64) -> Result<Vec<LibraryFile>, String> {
 /// Search the library by artist/album/title.
 #[tauri::command]
 pub async fn search_library(query: String) -> Result<Vec<LibraryFile>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let cmd = format!(
@@ -270,26 +274,27 @@ pub async fn search_library(query: String) -> Result<Vec<LibraryFile>, String> {
 /// List top-level categories (playlists, albums, artists, tracks).
 #[tauri::command]
 pub async fn list_categories() -> Result<Vec<String>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
-    let cmd = format!(
-        "ls -1 '{}' 2>/dev/null | sort",
-        config.output_path
-    );
+    let cmd = format!("ls -1 '{}' 2>/dev/null | sort", config.output_path);
     let out = crate::services::ssh::run(&host, &cmd)
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(out.lines().map(|s| s.to_string()).filter(|s| !s.is_empty()).collect())
+    Ok(out
+        .lines()
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .collect())
 }
 
 /// List subdirectories inside a category (e.g. playlists/playlist-id).
 #[tauri::command]
 pub async fn list_subdirs(category: String) -> Result<Vec<String>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
 
     let path = format!("{}/{}", config.output_path, category);
@@ -301,5 +306,9 @@ pub async fn list_subdirs(category: String) -> Result<Vec<String>, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(out.lines().map(|s| s.to_string()).filter(|s| !s.is_empty()).collect())
+    Ok(out
+        .lines()
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .collect())
 }

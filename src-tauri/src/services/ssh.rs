@@ -19,7 +19,8 @@ const CONNECT_TIMEOUT: u32 = 10;
 /// Build the full ssh command with all options.
 pub fn build_ssh_command(config: &AppConfig, remote_cmd: &str) -> Command {
     let mut cmd = Command::new("ssh");
-    cmd.arg("-o").arg(format!("ConnectTimeout={}", CONNECT_TIMEOUT));
+    cmd.arg("-o")
+        .arg(format!("ConnectTimeout={}", CONNECT_TIMEOUT));
     cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
     cmd.arg("-o").arg("BatchMode=yes");
     cmd.arg("-o").arg("ServerAliveInterval=60");
@@ -41,14 +42,14 @@ pub fn build_ssh_command(config: &AppConfig, remote_cmd: &str) -> Command {
 /// Stderr is included in the error message on non-zero exit.
 pub async fn run(host: &str, remote_cmd: &str) -> AppResult<String> {
     // Load config to get SSH options
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .unwrap_or_default();
+    let config = crate::services::config_manager::ConfigManager::load_fresh().unwrap_or_default();
 
     if config.ssh_target() != host && config.remote_host != host {
         // Host mismatch — caller passed a raw host string without config context.
         // Fall back to minimal SSH options.
         let mut cmd = Command::new("ssh");
-        cmd.arg("-o").arg(format!("ConnectTimeout={}", CONNECT_TIMEOUT));
+        cmd.arg("-o")
+            .arg(format!("ConnectTimeout={}", CONNECT_TIMEOUT));
         cmd.arg("-o").arg("StrictHostKeyChecking=accept-new");
         cmd.arg("-o").arg("BatchMode=yes");
         cmd.arg(host).arg(remote_cmd);
@@ -66,14 +67,11 @@ pub async fn run_with_config(config: &AppConfig, remote_cmd: &str) -> AppResult<
 }
 
 async fn exec(mut cmd: Command, host: &str, remote_cmd: &str) -> AppResult<String> {
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| AppError::Ssh {
-            host: host.into(),
-            cmd: remote_cmd.into(),
-            cause: format!("Failed to spawn ssh: {}", e),
-        })?;
+    let output = cmd.output().await.map_err(|e| AppError::Ssh {
+        host: host.into(),
+        cmd: remote_cmd.into(),
+        cause: format!("Failed to spawn ssh: {}", e),
+    })?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -157,13 +155,21 @@ pub async fn delete_remote_file(config: &AppConfig, remote_path: &str) -> AppRes
 
 /// Check if a process is still running on the remote host.
 pub async fn is_process_running(config: &AppConfig, pid: u32) -> AppResult<bool> {
-    let out = run_with_config(config, &format!("kill -0 {} 2>/dev/null && echo yes || echo no", pid)).await?;
+    let out = run_with_config(
+        config,
+        &format!("kill -0 {} 2>/dev/null && echo yes || echo no", pid),
+    )
+    .await?;
     Ok(out.trim() == "yes")
 }
 
 /// Send a signal to a remote process.
 pub async fn signal_process(config: &AppConfig, pid: u32, sig: &str) -> AppResult<()> {
-    run_with_config(config, &format!("kill -{} {} 2>/dev/null || true", sig, pid)).await?;
+    run_with_config(
+        config,
+        &format!("kill -{} {} 2>/dev/null || true", sig, pid),
+    )
+    .await?;
     Ok(())
 }
 
@@ -172,16 +178,28 @@ pub async fn get_system_info(config: &AppConfig) -> AppResult<crate::models::Rem
     let _host = config.ssh_target();
     let uname = run_with_config(config, "uname -sm").await?;
     let hostname = run_with_config(config, "hostname").await?;
-    let version = run_with_config(config, &format!("{} --version 2>&1 || echo 'unknown'", config.sldl_path)).await?;
+    let version = run_with_config(
+        config,
+        &format!("{} --version 2>&1 || echo 'unknown'", config.sldl_path),
+    )
+    .await?;
     let df = run_with_config(config, "df -BG . | tail -1 | awk '{print $2,$4}'").await?;
-    let mem = run_with_config(config, "free -m | awk 'NR==2{print $2}'").await.unwrap_or_default();
+    let mem = run_with_config(config, "free -m | awk 'NR==2{print $2}'")
+        .await
+        .unwrap_or_default();
     let cpu = run_with_config(config, "nproc").await.unwrap_or_default();
 
     let disk_parts: Vec<&str> = df.trim().split_whitespace().collect();
     let (total, free) = if disk_parts.len() >= 2 {
         (
-            disk_parts[0].trim_end_matches('G').parse::<f64>().unwrap_or(0.0),
-            disk_parts[1].trim_end_matches('G').parse::<f64>().unwrap_or(0.0),
+            disk_parts[0]
+                .trim_end_matches('G')
+                .parse::<f64>()
+                .unwrap_or(0.0),
+            disk_parts[1]
+                .trim_end_matches('G')
+                .parse::<f64>()
+                .unwrap_or(0.0),
         )
     } else {
         (0.0, 0.0)

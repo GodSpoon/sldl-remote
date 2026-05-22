@@ -103,11 +103,17 @@ pub enum JobType {
 impl JobType {
     pub fn detect(url: &str) -> Self {
         let lower = url.to_lowercase();
-        if lower.contains("/playlist/") { Self::Playlist }
-        else if lower.contains("/album/") { Self::Album }
-        else if lower.contains("/artist/") { Self::Artist }
-        else if lower.contains("/track/") { Self::Track }
-        else { Self::Auto }
+        if lower.contains("/playlist/") {
+            Self::Playlist
+        } else if lower.contains("/album/") {
+            Self::Album
+        } else if lower.contains("/artist/") {
+            Self::Artist
+        } else if lower.contains("/track/") {
+            Self::Track
+        } else {
+            Self::Auto
+        }
     }
 
     pub fn sldl_flag(&self) -> &'static str {

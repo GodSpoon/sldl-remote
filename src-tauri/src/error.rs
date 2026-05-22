@@ -12,7 +12,11 @@ pub enum AppError {
     /// Config file I/O or parse failure.
     Config(String),
     /// SSH remote command failure.
-    Ssh { host: String, cmd: String, cause: String },
+    Ssh {
+        host: String,
+        cmd: String,
+        cause: String,
+    },
     /// Job not found in the in-memory registry.
     JobNotFound(String),
     /// Invalid user input (bad URL, unknown type, etc.).
@@ -34,7 +38,14 @@ impl fmt::Display for AppError {
             AppError::JobNotFound(id) => write!(f, "Job {} not found", id),
             AppError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
             AppError::SoulseekBanned { ip, message } => {
-                write!(f, "Soulseek ban{}: {}", ip.as_ref().map(|i| format!(" (IP: {})", i)).unwrap_or_default(), message)
+                write!(
+                    f,
+                    "Soulseek ban{}: {}",
+                    ip.as_ref()
+                        .map(|i| format!(" (IP: {})", i))
+                        .unwrap_or_default(),
+                    message
+                )
             }
             AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }

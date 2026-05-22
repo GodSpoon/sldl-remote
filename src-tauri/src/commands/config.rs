@@ -11,18 +11,15 @@ pub fn get_config(state: State<AppServices>) -> Result<AppConfig, String> {
 }
 
 #[tauri::command]
-pub fn save_config(
-    state: State<AppServices>,
-    config: AppConfig,
-) -> Result<(), String> {
+pub fn save_config(state: State<AppServices>, config: AppConfig) -> Result<(), String> {
     let mut mgr = state.config.lock().map_err(|e| e.to_string())?;
     ok(mgr.save(&config))
 }
 
 #[tauri::command]
 pub async fn test_connection() -> Result<ConnectionStatus, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
 
     let host = config.ssh_target();
 
@@ -41,7 +38,10 @@ pub async fn test_connection() -> Result<ConnectionStatus, String> {
 
     let (total, free) = match crate::services::ssh::run(
         &host,
-        &format!("df -BG '{}' | tail -1 | awk '{{print $2,$4}}'", config.output_path),
+        &format!(
+            "df -BG '{}' | tail -1 | awk '{{print $2,$4}}'",
+            config.output_path
+        ),
     )
     .await
     {
@@ -90,8 +90,8 @@ pub fn apply_quality_preset(
 
 #[tauri::command]
 pub async fn get_sldl_help() -> Result<String, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     crate::services::ssh::run(
         &config.ssh_target(),
         &format!("{} --help", config.sldl_path),
@@ -109,8 +109,8 @@ pub fn get_config_dir() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn verify_remote_paths() -> Result<Vec<String>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
     let mut results = vec![];
 
@@ -134,7 +134,10 @@ pub async fn verify_remote_paths() -> Result<Vec<String>, String> {
     // Check output dir
     match crate::services::ssh::run(
         &host,
-        &format!("test -d '{}' && echo ok || echo missing", config.output_path),
+        &format!(
+            "test -d '{}' && echo ok || echo missing",
+            config.output_path
+        ),
     )
     .await
     {
@@ -155,10 +158,7 @@ pub async fn verify_remote_paths() -> Result<Vec<String>, String> {
     if !config.ssh_key_path.is_empty() {
         match std::fs::metadata(&config.ssh_key_path) {
             Ok(_) => results.push(format!("✓ SSH key at {}", config.ssh_key_path)),
-            Err(_) => results.push(format!(
-                "✗ SSH key NOT FOUND at {}",
-                config.ssh_key_path
-            )),
+            Err(_) => results.push(format!("✗ SSH key NOT FOUND at {}", config.ssh_key_path)),
         }
     } else {
         results.push("ℹ Using default SSH key (agent or ~/.ssh)".into());
@@ -169,17 +169,14 @@ pub async fn verify_remote_paths() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub async fn ensure_output_dirs() -> Result<(), String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
     crate::services::ssh::run(
         &host,
         &format!(
             "mkdir -p {}/playlists {}/albums {}/artists {}/tracks",
-            config.output_path,
-            config.output_path,
-            config.output_path,
-            config.output_path
+            config.output_path, config.output_path, config.output_path, config.output_path
         ),
     )
     .await
@@ -189,8 +186,8 @@ pub async fn ensure_output_dirs() -> Result<(), String> {
 
 #[tauri::command]
 pub async fn setup_remote_sldl() -> Result<Vec<String>, String> {
-    let config = crate::services::config_manager::ConfigManager::load_fresh()
-        .map_err(|e| e.to_string())?;
+    let config =
+        crate::services::config_manager::ConfigManager::load_fresh().map_err(|e| e.to_string())?;
     let host = config.ssh_target();
     let mut log = vec![];
 
@@ -222,11 +219,7 @@ pub async fn setup_remote_sldl() -> Result<Vec<String>, String> {
     match crate::services::ssh::run(&host, &dl).await {
         Ok(_) => {
             // Verify
-            match crate::services::ssh::run(
-                &host,
-                &format!("{} --version", config.sldl_path),
-            )
-            .await
+            match crate::services::ssh::run(&host, &format!("{} --version", config.sldl_path)).await
             {
                 Ok(ver) => log.push(format!("✓ Installed: {}", ver.trim())),
                 Err(e) => log.push(format!("✗ Install verification failed: {}", e)),

@@ -72,21 +72,51 @@ pub struct AppConfig {
     pub listen_port_base: u16,
 }
 
-fn default_remote_host() -> String { "192.168.70.12".into() }
-fn default_remote_user() -> String { "root".into() }
-fn default_ssh_port() -> u16 { 22 }
-fn default_sldl_path() -> String { "/usr/local/bin/sldl".into() }
-fn default_output_path() -> String { "/media/music".into() }
-fn default_pref_format() -> String { "mp3".into() }
-fn default_pref_min_bitrate() -> u32 { 320 }
-fn default_pref_max_bitrate() -> u32 { 2500 }
-fn default_pref_max_samplerate() -> u32 { 48000 }
-fn default_searches_per_time() -> u32 { 20 }
-fn default_searches_renew_time() -> u32 { 300 }
-fn default_name_format() -> String { "{artist(/)album(/)track(. )title|filename}".into() }
-fn default_max_retries() -> u32 { 10 }
-fn default_concurrent_jobs() -> u32 { 20 }
-fn default_listen_port_base() -> u16 { 49900 }
+fn default_remote_host() -> String {
+    "192.168.70.12".into()
+}
+fn default_remote_user() -> String {
+    "root".into()
+}
+fn default_ssh_port() -> u16 {
+    22
+}
+fn default_sldl_path() -> String {
+    "/usr/local/bin/sldl".into()
+}
+fn default_output_path() -> String {
+    "/media/music".into()
+}
+fn default_pref_format() -> String {
+    "mp3".into()
+}
+fn default_pref_min_bitrate() -> u32 {
+    320
+}
+fn default_pref_max_bitrate() -> u32 {
+    2500
+}
+fn default_pref_max_samplerate() -> u32 {
+    48000
+}
+fn default_searches_per_time() -> u32 {
+    20
+}
+fn default_searches_renew_time() -> u32 {
+    300
+}
+fn default_name_format() -> String {
+    "{artist(/)album(/)track(. )title|filename}".into()
+}
+fn default_max_retries() -> u32 {
+    10
+}
+fn default_concurrent_jobs() -> u32 {
+    20
+}
+fn default_listen_port_base() -> u16 {
+    49900
+}
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -163,16 +193,22 @@ impl AppConfig {
         if self.ssh_port == 22 {
             format!("{}@{}", self.remote_user, self.remote_host)
         } else {
-            format!("{}@{}:{}", self.remote_user, self.remote_host, self.ssh_port)
+            format!(
+                "{}@{}:{}",
+                self.remote_user, self.remote_host, self.ssh_port
+            )
         }
     }
 
     /// SSH command prefix (key + port options).
     pub fn ssh_opts(&self) -> Vec<String> {
         let mut opts = vec![
-            "-o".to_string(), "ConnectTimeout=10".to_string(),
-            "-o".to_string(), "StrictHostKeyChecking=accept-new".to_string(),
-            "-o".to_string(), "BatchMode=yes".to_string(),
+            "-o".to_string(),
+            "ConnectTimeout=10".to_string(),
+            "-o".to_string(),
+            "StrictHostKeyChecking=accept-new".to_string(),
+            "-o".to_string(),
+            "BatchMode=yes".to_string(),
         ];
         if self.ssh_port != 22 {
             opts.push("-p".to_string());
