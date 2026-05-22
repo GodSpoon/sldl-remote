@@ -21,39 +21,36 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: sldl-remote/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          components: rustfmt, clippy
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --locked
 
       - name: Install frontend dependencies
-        working-directory: sldl-remote
         run: npm install
 
       - name: Check Rust formatting
-        working-directory: sldl-remote/src-tauri
+        working-directory: src-tauri
         run: cargo fmt -- --check
 
       - name: Run Clippy
-        working-directory: sldl-remote/src-tauri
+        working-directory: src-tauri
         run: cargo clippy -- -D warnings
 
       - name: Run Rust tests
-        working-directory: sldl-remote/src-tauri
+        working-directory: src-tauri
         run: cargo test
 
       - name: Build frontend
-        working-directory: sldl-remote
         run: npm run build
 
       - name: Build Tauri app
-        working-directory: sldl-remote
-        run: cargo tauri build --no-bundle
+        run: unset CI && cargo tauri build
 
   build:
     name: Build Release Bundle
@@ -67,23 +64,19 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: sldl-remote/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --locked
 
       - name: Install frontend dependencies
-        working-directory: sldl-remote
         run: npm install
 
       - name: Build release bundle
-        working-directory: sldl-remote
-        run: cargo tauri build
+        run: unset CI && cargo tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
@@ -93,11 +86,11 @@ jobs:
         with:
           name: sldl-remote-macos
           path: |
-            sldl-remote/src-tauri/target/universal-apple-darwin/release/bundle/**/*.app
-            sldl-remote/src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
-            sldl-remote/src-tauri/target/x86_64-apple-darwin/release/bundle/**/*.app
-            sldl-remote/src-tauri/target/x86_64-apple-darwin/release/bundle/**/*.dmg
-            sldl-remote/src-tauri/target/aarch64-apple-darwin/release/bundle/**/*.app
-            sldl-remote/src-tauri/target/aarch64-apple-darwin/release/bundle/**/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.app
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
+            src-tauri/target/x86_64-apple-darwin/release/bundle/**/*.app
+            src-tauri/target/x86_64-apple-darwin/release/bundle/**/*.dmg
+            src-tauri/target/aarch64-apple-darwin/release/bundle/**/*.app
+            src-tauri/target/aarch64-apple-darwin/release/bundle/**/*.dmg
           if-no-files-found: ignore
           retention-days: 7
