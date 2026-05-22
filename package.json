@@ -1,0 +1,29 @@
+{
+  "name": "sldl-remote",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri-dev": "tauri dev",
+    "tauri-build": "tauri build",
+    "format": "prettier --write \"src/**/*.{js,css,html}\"",
+    "lint": "prettier --check \"src/**/*.{js,css,html}\""
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  },
+  "devDependencies": {
+    "vite": "^5",
+    "prettier": "^3",
+    "@tauri-apps/cli": "^2"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  }
+}
