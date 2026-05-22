@@ -6,14 +6,9 @@
 use crate::error::AppResult;
 use crate::models::AppConfig;
 
+#[derive(Default)]
 pub struct ConfigManager {
     cached: Option<AppConfig>,
-}
-
-impl Default for ConfigManager {
-    fn default() -> Self {
-        Self { cached: None }
-    }
 }
 
 impl ConfigManager {

@@ -35,7 +35,7 @@ pub fn allocate_listen_port(base: u16) -> u16 {
 /// Helper: extract a Spotify ID from any Spotify URL.
 pub fn extract_spotify_id(url: &str) -> Option<String> {
     url.split('/')
-        .last()
+        .next_back()
         .and_then(|s| s.split('?').next())
         .map(|s| s.to_string())
 }
@@ -118,8 +118,8 @@ pub fn parse_progress(log_tail: &str) -> crate::models::ParsedProgress {
             p.not_found += 1;
         }
         // Pattern: "Searching: Artist - Title"
-        if line.starts_with("Searching:") {
-            p.current_track = Some(line["Searching:".len()..].trim().to_string());
+        if let Some(stripped) = line.strip_prefix("Searching:") {
+            p.current_track = Some(stripped.trim().to_string());
             p.current_action = Some("searching".into());
         }
         // Pattern: "Initialize: ..."
@@ -168,7 +168,7 @@ pub async fn check_disk_space(
         &format!("df -BG '{}' | tail -1 | awk '{{print $2,$4}}'", path),
     )
     .await?;
-    let parts: Vec<&str> = out.trim().split_whitespace().collect();
+    let parts: Vec<&str> = out.split_whitespace().collect();
     if parts.len() >= 2 {
         let total = parts[0].trim_end_matches('G').parse::<f64>().unwrap_or(0.0);
         let free = parts[1].trim_end_matches('G').parse::<f64>().unwrap_or(0.0);

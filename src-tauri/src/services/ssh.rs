@@ -189,7 +189,7 @@ pub async fn get_system_info(config: &AppConfig) -> AppResult<crate::models::Rem
         .unwrap_or_default();
     let cpu = run_with_config(config, "nproc").await.unwrap_or_default();
 
-    let disk_parts: Vec<&str> = df.trim().split_whitespace().collect();
+    let disk_parts: Vec<&str> = df.split_whitespace().collect();
     let (total, free) = if disk_parts.len() >= 2 {
         (
             disk_parts[0]

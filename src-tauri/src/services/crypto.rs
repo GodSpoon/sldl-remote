@@ -49,7 +49,7 @@ pub fn load_or_create_key() -> AppResult<[u8; KEY_LEN]> {
     }
     let mut key = [0u8; KEY_LEN];
     rand::thread_rng().fill_bytes(&mut key);
-    std::fs::write(&path, &key)?;
+    std::fs::write(&path, key)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

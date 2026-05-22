@@ -46,7 +46,8 @@ pub async fn test_connection() -> Result<ConnectionStatus, String> {
     .await
     {
         Ok(out) => {
-            let parts: Vec<&str> = out.trim().split_whitespace().collect();
+            let parts: Vec<&str> = out.split_whitespace().collect();
+
             if parts.len() >= 2 {
                 (
                     parts[0].trim_end_matches('G').parse::<f64>().unwrap_or(0.0),
@@ -192,19 +193,16 @@ pub async fn setup_remote_sldl() -> Result<Vec<String>, String> {
     let mut log = vec![];
 
     // Check if sldl already exists
-    match crate::services::ssh::run(
+    if let Ok(out) = crate::services::ssh::run(
         &host,
         &format!("{} --version 2>/dev/null || echo missing", config.sldl_path),
     )
     .await
     {
-        Ok(out) => {
-            if out.trim() != "missing" {
-                log.push(format!("sldl already installed: {}", out.trim()));
-                return Ok(log);
-            }
+        if out.trim() != "missing" {
+            log.push(format!("sldl already installed: {}", out.trim()));
+            return Ok(log);
         }
-        Err(_) => {}
     }
 
     log.push("sldl not found, attempting install...".into());

@@ -70,7 +70,7 @@ pub async fn get_download_stats() -> Result<LibraryStats, String> {
             Ok(out) => {
                 let lines: Vec<&str> = out.lines().collect();
                 let count = lines
-                    .get(0)
+                    .first()
                     .and_then(|l| l.trim().parse::<usize>().ok())
                     .unwrap_or(0);
                 let size = lines
@@ -145,10 +145,10 @@ pub async fn get_file_info(remote_path: String) -> Result<LibraryFile, String> {
     let out = crate::services::ssh::run(&host, &cmd)
         .await
         .map_err(|e| e.to_string())?;
-    let parts: Vec<&str> = out.trim().split_whitespace().collect();
+    let parts: Vec<&str> = out.split_whitespace().collect();
 
     let size = parts
-        .get(0)
+        .first()
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(0);
     let modified = parts.get(1..).map(|p| p.join(" ")).unwrap_or_default();
