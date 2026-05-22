@@ -5,11 +5,21 @@ import {
   startAssociatedAlbumJobs, getJobFamily,
   isActive, JobStatus, JobStatusLabels, JobStatusColors,
 } from './services/api.js'
+import { invoke } from '@tauri-apps/api/core'
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
+// ── Icons (inline SVG strings) ─────────────────────────────────────────────
+const ICONS = {
+  play: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+  stop: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
+  log: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  settings: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  link: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  music: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
+  check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+}
 
+// ── State ──────────────────────────────────────────────────────────────────
 const state = {
   config: null,
   jobs: [],
@@ -21,12 +31,10 @@ const state = {
   isDiscoveringAlbums: false,
   albumDiscoveryResult: null,
   pendingAlbumModeJobId: null,
+  stats: null,
 }
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
-
+// ── Init ───────────────────────────────────────────────────────────────────
 export async function init() {
   renderApp()
   await loadConfig()
@@ -35,16 +43,9 @@ export async function init() {
   startPolling()
 }
 
-// ---------------------------------------------------------------------------
-// Core actions
-// ---------------------------------------------------------------------------
-
+// ── Core actions ───────────────────────────────────────────────────────────
 async function loadConfig() {
-  try {
-    state.config = await getConfig()
-  } catch (e) {
-    console.error('Failed to load config:', e)
-  }
+  try { state.config = await getConfig() } catch (e) { console.error('Failed to load config:', e) }
 }
 
 async function refreshConnection() {
@@ -64,9 +65,7 @@ async function refreshJobs() {
     state.jobs = await refreshJobStatus()
     renderJobs()
     updateStats()
-  } catch (e) {
-    console.error('Refresh failed:', e)
-  }
+  } catch (e) { console.error('Refresh failed:', e) }
 }
 
 async function onDownload() {
@@ -76,6 +75,7 @@ async function onDownload() {
 
   const typeEl = document.getElementById('job-type')
   const assocEl = document.getElementById('associated-album-mode')
+  const btn = document.getElementById('btn-download')
 
   const jobType = typeEl.value
   const assoc = assocEl.checked
@@ -87,9 +87,10 @@ async function onDownload() {
       const ok = confirm(validation.warnings.join('\n') + '\n\nProceed anyway?')
       if (!ok) return
     }
-  } catch (e) {
-    console.warn('Validation failed:', e)
-  }
+  } catch (e) { console.warn('Validation failed:', e) }
+
+  btn.disabled = true
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Starting...`
 
   try {
     const result = await startJob(url, jobType, assoc)
@@ -97,15 +98,17 @@ async function onDownload() {
     state.selectedJobId = result.jobId
 
     if (assoc) {
-      // Enter album discovery flow
       state.pendingAlbumModeJobId = result.jobId
       await discoverAlbums(result.jobId, url)
     }
 
     await refreshJobs()
-    await viewLogs(result.jobId)
+    await onViewLogs(result.jobId)
   } catch (e) {
     alert('Failed to start job: ' + e)
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = `${ICONS.download} Download`
   }
 }
 
@@ -126,28 +129,20 @@ async function discoverAlbums(jobId, url) {
 
 async function onStartAlbumDownloads() {
   if (!state.albumDiscoveryResult || !state.pendingAlbumModeJobId) return
-
   const checkboxes = document.querySelectorAll('.album-discovery-item input:checked')
   const selected = Array.from(checkboxes).map(cb => ({
     artist: cb.dataset.artist,
     album: cb.dataset.album,
     priority: parseInt(cb.dataset.priority) || 0,
   }))
-
-  if (selected.length === 0) {
-    alert('Select at least one album')
-    return
-  }
-
+  if (selected.length === 0) { alert('Select at least one album'); return }
   try {
     await startAssociatedAlbumJobs(state.pendingAlbumModeJobId, selected)
     state.albumDiscoveryResult = null
     state.pendingAlbumModeJobId = null
     renderAlbumDiscovery()
     await refreshJobs()
-  } catch (e) {
-    alert('Failed to start album jobs: ' + e)
-  }
+  } catch (e) { alert('Failed to start album jobs: ' + e) }
 }
 
 async function onViewLogs(jobId) {
@@ -156,79 +151,81 @@ async function onViewLogs(jobId) {
   try {
     const logs = await getJobLogs(jobId, 60)
     renderLogs(logs)
-  } catch (e) {
-    renderLogs('Error: ' + e)
-  }
+  } catch (e) { renderLogs('Error: ' + e) }
 }
 
 async function onStopJob(jobId) {
   if (!confirm('Stop this job?')) return
-  try {
-    await stopJob(jobId)
-    await refreshJobs()
-  } catch (e) {
-    alert('Failed to stop: ' + e)
-  }
+  try { await stopJob(jobId); await refreshJobs() } catch (e) { alert('Failed to stop: ' + e) }
 }
 
-// ---------------------------------------------------------------------------
-// Polling
-// ---------------------------------------------------------------------------
-
+// ── Polling ────────────────────────────────────────────────────────────────
 function startPolling() {
   if (state.pollInterval) clearInterval(state.pollInterval)
   state.pollInterval = setInterval(() => {
     if (state.autoRefresh && state.jobs.some(j => isActive(j.status))) {
       refreshJobs()
-      if (state.selectedJobId) {
-        viewLogs(state.selectedJobId)
-      }
+      if (state.selectedJobId) onViewLogs(state.selectedJobId)
     }
   }, 3000)
 }
 
-// ---------------------------------------------------------------------------
-// Render
-// ---------------------------------------------------------------------------
-
+// ── Render ─────────────────────────────────────────────────────────────────
 function renderApp() {
   const app = document.getElementById('app')
   app.innerHTML = `
     <header>
-      <h1>Sldl Remote</h1>
+      <h1>
+        <span class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </span>
+        Sldl Remote
+      </h1>
       <div class="actions">
         <span id="conn-badge" class="conn-status"><span class="dot"></span>Checking...</span>
-        <button class="btn" id="btn-settings">Settings</button>
+        <button class="btn ghost" id="btn-settings">${ICONS.settings} Settings</button>
       </div>
     </header>
     <main>
       <section class="input-section">
-        <input type="text" id="url-input" placeholder="Paste Spotify URL (playlist, album, artist, or track)..." />
+        <div class="url-bar">
+          <span class="url-icon">${ICONS.link}</span>
+          <input type="text" id="url-input" placeholder="Paste Spotify URL (playlist, album, artist, or track)..." />
+        </div>
         <div class="options-row">
           <select id="job-type">
             <option value="auto">Auto-detect</option>
             <option value="playlist">Playlist</option>
             <option value="album">Album</option>
-            <option value="artist">Artist (Discography)</option>
+            <option value="artist">Artist</option>
             <option value="track">Track</option>
           </select>
-          <label class="toggle-label" title="Download the full album for each track in this playlist">
+          <label class="toggle-label" title="Download the full album for each track">
             <input type="checkbox" id="associated-album-mode" />
             <span>Associated Album Mode</span>
           </label>
-          <button class="btn primary" id="btn-download">Download</button>
+          <button class="btn primary" id="btn-download">${ICONS.download} Download</button>
         </div>
       </section>
       <section class="log-section">
-        <h2>
-          <span>Live Log</span>
+        <div class="section-header">
+          <h2><span class="live-dot"></span> Live Log</h2>
           <span id="log-meta"></span>
-        </h2>
-        <pre id="log-viewer"><div class="empty">Select a job to view logs</div></pre>
+        </div>
+        <pre id="log-viewer"><div class="empty">
+          <div class="empty-icon">${ICONS.log}</div>
+          Select a job to view logs
+        </div></pre>
       </section>
       <aside class="status-panel">
-        <h2>Active Jobs <span id="job-count"></span></h2>
-        <div id="jobs-list"><div class="empty">No jobs yet</div></div>
+        <div class="section-header">
+          <h2>Active Jobs</h2>
+          <span id="job-count"></span>
+        </div>
+        <div id="jobs-list"><div class="empty">
+          <div class="empty-icon">${ICONS.music}</div>
+          No jobs yet — paste a Spotify URL to start
+        </div></div>
       </aside>
     </main>
     <div id="modal-container"></div>
@@ -237,15 +234,13 @@ function renderApp() {
 
   document.getElementById('btn-download').addEventListener('click', onDownload)
   document.getElementById('btn-settings').addEventListener('click', openSettings)
-  document.getElementById('url-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') onDownload()
-  })
+  document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') onDownload() })
 }
 
 function updateConnectionBadge() {
   const el = document.getElementById('conn-badge')
   if (!el) return
-  el.className = state.connectionOk ? 'conn-status ok' : 'conn-status err'
+  el.className = 'conn-status ' + (state.connectionOk ? 'ok' : 'err')
   el.innerHTML = `<span class="dot"></span>${state.connectionMessage}`
 }
 
@@ -255,33 +250,52 @@ function renderJobs() {
   if (!container) return
 
   const active = state.jobs.filter(j => isActive(j.status)).length
-  if (countEl) countEl.textContent = active > 0 ? `(${active})` : ''
+  if (countEl) countEl.textContent = active > 0 ? `${active} running` : ''
 
   if (state.jobs.length === 0) {
-    container.innerHTML = '<div class="empty">No jobs yet</div>'
+    container.innerHTML = `<div class="empty"><div class="empty-icon">${ICONS.music}</div>No jobs yet — paste a Spotify URL to start</div>`
     return
   }
 
   container.innerHTML = state.jobs.map(job => {
     const isSelected = job.id === state.selectedJobId
     const statusColor = JobStatusColors[job.status] || 'var(--text-muted)'
-    const progressText = job.percentComplete != null
-      ? `${job.percentComplete.toFixed(1)}% — ${job.progress}`
-      : job.progress
+    const pct = job.percentComplete
+    const hasProgress = pct != null && pct > 0
+    const progressClass = job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'failed' : ''
+    const progressText = hasProgress ? `${pct.toFixed(1)}%` : ''
+
+    // Status dot color
+    let dotColor = statusColor
+    if (job.status === 'running') dotColor = 'var(--accent)'
+    else if (job.status === 'completed') dotColor = 'var(--success)'
+    else if (job.status === 'failed') dotColor = 'var(--danger)'
+    else if (job.status === 'banned') dotColor = 'var(--warning)'
 
     return `
       <div class="job-card ${isSelected ? 'active' : ''}" data-id="${escapeHtml(job.id)}">
         <div class="job-header">
           <span class="job-type">${job.jobType}</span>
-          <span class="job-status" style="background:${statusColor};color:white">${JobStatusLabels[job.status] || job.status}</span>
+          <span class="job-status" style="background:${statusColor}18;color:${statusColor};border:1px solid ${statusColor}28">
+            <span class="status-dot" style="background:${dotColor};box-shadow:0 0 5px ${dotColor}"></span>
+            ${JobStatusLabels[job.status] || job.status}
+          </span>
         </div>
         <div class="job-url">${escapeHtml(job.url)}</div>
-        <div class="job-progress">${escapeHtml(progressText)}</div>
-        ${job.associatedAlbumMode ? '<div class="album-badge">Associated Album Mode</div>' : ''}
+        ${hasProgress ? `
+          <div class="job-progress-row">
+            <span class="job-progress-text">${escapeHtml(job.progress || '')}</span>
+            <span class="job-progress-pct">${progressText}</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill ${progressClass}" style="width:${Math.min(pct, 100)}%"></div>
+          </div>
+        ` : `<div class="job-progress-text" style="margin-bottom:8px">${escapeHtml(job.progress || 'Waiting...')}</div>`}
+        ${job.associatedAlbumMode ? `<div class="album-badge">${ICONS.play} Associated Album Mode</div>` : ''}
         <div class="job-actions">
-          <button class="btn small" data-action="logs" data-id="${escapeHtml(job.id)}">Logs</button>
+          <button class="btn small ghost" data-action="logs" data-id="${escapeHtml(job.id)}">${ICONS.log} Logs</button>
           ${isActive(job.status) ? `
-            <button class="btn small danger" data-action="stop" data-id="${escapeHtml(job.id)}">Stop</button>
+            <button class="btn small danger" data-action="stop" data-id="${escapeHtml(job.id)}">${ICONS.stop} Stop</button>
           ` : ''}
         </div>
       </div>
@@ -289,21 +303,13 @@ function renderJobs() {
   }).join('')
 
   container.querySelectorAll('[data-action="logs"]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation()
-      onViewLogs(btn.dataset.id)
-    })
+    btn.addEventListener('click', e => { e.stopPropagation(); onViewLogs(btn.dataset.id) })
   })
   container.querySelectorAll('[data-action="stop"]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation()
-      onStopJob(btn.dataset.id)
-    })
+    btn.addEventListener('click', e => { e.stopPropagation(); onStopJob(btn.dataset.id) })
   })
   container.querySelectorAll('.job-card').forEach(card => {
-    card.addEventListener('click', () => {
-      onViewLogs(card.dataset.id)
-    })
+    card.addEventListener('click', () => onViewLogs(card.dataset.id))
   })
 }
 
@@ -311,18 +317,16 @@ function renderLogs(text) {
   const viewer = document.getElementById('log-viewer')
   const meta = document.getElementById('log-meta')
   if (!viewer) return
-
   const job = state.jobs.find(j => j.id === state.selectedJobId)
-  if (meta && job) {
-    meta.textContent = `${job.jobType} • ${job.progress}`
-  }
-
+  if (meta && job) meta.textContent = `${job.jobType} \u2022 ${job.progress}`
   viewer.textContent = text || 'No logs available'
   viewer.scrollTop = viewer.scrollHeight
 }
 
-function updateStats() {
-  // Placeholder for stats bar update
+async function updateStats() {
+  try {
+    state.stats = await getJobStats()
+  } catch (e) { /* ignore */ }
 }
 
 function renderAlbumDiscovery() {
@@ -354,7 +358,7 @@ function renderAlbumDiscovery() {
   overlay.innerHTML = `
     <div class="discovery-modal">
       <h2>Associated Album Mode</h2>
-      <p>Found ${result.uniqueAlbums.length} unique albums across ${result.trackCount} tracks.</p>
+      <p>Found <strong>${result.uniqueAlbums.length}</strong> unique albums across ${result.trackCount} tracks.</p>
       <div class="album-list">
         ${result.uniqueAlbums.map((album, i) => `
           <label class="album-discovery-item">
@@ -363,13 +367,13 @@ function renderAlbumDiscovery() {
               data-album="${escapeHtml(album.album)}"
               data-priority="${result.trackCount - i}"
             />
-            <span>${escapeHtml(album.artist)} — ${escapeHtml(album.album)}</span>
+            <span>${escapeHtml(album.artist)} \u2014 ${escapeHtml(album.album)}</span>
           </label>
         `).join('')}
       </div>
       <div class="discovery-actions">
-        <button class="btn" id="btn-cancel-albums">Cancel</button>
-        <button class="btn primary" id="btn-start-albums">Download ${result.uniqueAlbums.length} Albums</button>
+        <button class="btn ghost" id="btn-cancel-albums">Cancel</button>
+        <button class="btn primary" id="btn-start-albums">${ICONS.download} Download ${result.uniqueAlbums.length} Albums</button>
       </div>
     </div>
   `
@@ -382,10 +386,7 @@ function renderAlbumDiscovery() {
   document.getElementById('btn-start-albums').addEventListener('click', onStartAlbumDownloads)
 }
 
-// ---------------------------------------------------------------------------
-// Settings Modal
-// ---------------------------------------------------------------------------
-
+// ── Settings Modal ─────────────────────────────────────────────────────────
 function openSettings() {
   const container = document.getElementById('modal-container')
   const c = state.config || {}
@@ -395,31 +396,22 @@ function openSettings() {
       <div class="modal">
         <div class="modal-header">
           <h2>Settings</h2>
-          <button class="modal-close" id="btn-close-settings">&times;</button>
+          <button class="modal-close" id="btn-close-settings">\u00d7</button>
         </div>
         <div class="modal-body" id="settings-body">
-          <!-- Tabs -->
           <div class="tabs">
             <button class="tab active" data-tab="remote">Remote Host</button>
             <button class="tab" data-tab="accounts">Accounts</button>
             <button class="tab" data-tab="quality">Quality</button>
             <button class="tab" data-tab="advanced">Advanced</button>
           </div>
-          <div class="tab-content active" data-tab="remote">
-            ${renderRemoteTab(c)}
-          </div>
-          <div class="tab-content" data-tab="accounts">
-            ${renderAccountsTab(c)}
-          </div>
-          <div class="tab-content" data-tab="quality">
-            ${renderQualityTab(c)}
-          </div>
-          <div class="tab-content" data-tab="advanced">
-            ${renderAdvancedTab(c)}
-          </div>
+          <div class="tab-content active" data-tab="remote">${renderRemoteTab(c)}</div>
+          <div class="tab-content" data-tab="accounts">${renderAccountsTab(c)}</div>
+          <div class="tab-content" data-tab="quality">${renderQualityTab(c)}</div>
+          <div class="tab-content" data-tab="advanced">${renderAdvancedTab(c)}</div>
         </div>
         <div class="modal-footer">
-          <button class="btn" id="btn-test-conn">Test Connection</button>
+          <button class="btn ghost" id="btn-test-conn">Test Connection</button>
           <button class="btn primary" id="btn-save-settings">Save</button>
         </div>
       </div>
@@ -427,13 +419,10 @@ function openSettings() {
   `
 
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings)
-  document.getElementById('settings-overlay').addEventListener('click', e => {
-    if (e.target.id === 'settings-overlay') closeSettings()
-  })
+  document.getElementById('settings-overlay').addEventListener('click', e => { if (e.target.id === 'settings-overlay') closeSettings() })
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings)
   document.getElementById('btn-test-conn').addEventListener('click', testConnFromSettings)
 
-  // Tab switching
   container.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       container.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
@@ -444,9 +433,7 @@ function openSettings() {
   })
 }
 
-function closeSettings() {
-  document.getElementById('modal-container').innerHTML = ''
-}
+function closeSettings() { document.getElementById('modal-container').innerHTML = '' }
 
 async function testConnFromSettings() {
   const btn = document.getElementById('btn-test-conn')
@@ -456,9 +443,7 @@ async function testConnFromSettings() {
     await saveSettings(false)
     await refreshConnection()
     btn.textContent = state.connectionOk ? 'Connected!' : 'Failed'
-  } catch (e) {
-    btn.textContent = 'Error'
-  }
+  } catch (e) { btn.textContent = 'Error' }
   setTimeout(() => { btn.textContent = 'Test Connection'; btn.disabled = false }, 2000)
 }
 
@@ -485,14 +470,11 @@ async function saveSettings(close = true) {
     concurrentJobs: parseInt(document.getElementById('cfg-concurrent').value) || 20,
     listenPortBase: parseInt(document.getElementById('cfg-port-base').value) || 49900,
   }
-
   try {
     await invoke('save_config', { config: newConfig })
     state.config = newConfig
     if (close) closeSettings()
-  } catch (e) {
-    alert('Save failed: ' + e)
-  }
+  } catch (e) { alert('Save failed: ' + e) }
 }
 
 function renderRemoteTab(c) {
@@ -560,7 +542,7 @@ function renderAdvancedTab(c) {
       <div class="form-group">
         <label class="toggle-label">
           <input type="checkbox" id="cfg-fast" ${c.fastSearch ? 'checked' : ''} />
-          Fast Search
+          <span>Fast Search</span>
         </label>
       </div>
     </div>
@@ -568,24 +550,20 @@ function renderAdvancedTab(c) {
       <div class="form-group">
         <label class="toggle-label">
           <input type="checkbox" id="cfg-skip" ${c.skipNotFound !== false ? 'checked' : ''} />
-          Skip Not Found
+          <span>Skip Not Found</span>
         </label>
       </div>
     </div>
   `
 }
 
-// ---------------------------------------------------------------------------
-// Utilities
-// ---------------------------------------------------------------------------
-
+// ── Utilities ──────────────────────────────────────────────────────────────
 function escapeHtml(text) {
   if (!text) return ''
   const div = document.createElement('div')
   div.textContent = text
   return div.innerHTML
 }
-
 const esc = escapeHtml
 
 // Expose for inline handlers
